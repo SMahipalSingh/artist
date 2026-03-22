@@ -21,11 +21,6 @@ const userSchema = mongoose.Schema(
       enum: ['collector', 'artist', 'admin'],
       default: 'collector',
     },
-    subscriptionPlan: {
-      type: String,
-      enum: ['basic', 'pro', 'studio'],
-      default: 'basic',
-    },
     profileImage: {
       type: String,
       default: '/uploads/default-avatar.png',

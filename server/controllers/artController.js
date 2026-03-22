@@ -1,5 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import Artwork from '../models/Artwork.js';
+import Membership from '../models/Membership.js';
+import Review from '../models/Review.js';
 import fs from 'fs';
 import path from 'path';
 import PDFDocument from 'pdfkit';
@@ -18,7 +20,7 @@ export const getArtworks = asyncHandler(async (req, res) => {
     : {};
 
   const artworks = await Artwork.find({ ...keyword }).populate(
-    'artist',
+    'artist_id',
     'name profileImage'
   );
 
@@ -30,7 +32,7 @@ export const getArtworks = asyncHandler(async (req, res) => {
 // @access  Public
 export const getArtworkById = asyncHandler(async (req, res) => {
   const artwork = await Artwork.findById(req.params.id).populate(
-    'artist',
+    'artist_id',
     'name profileImage'
   );
 
@@ -71,7 +73,7 @@ export const uploadArtwork = asyncHandler(async (req, res) => {
     tags: tags ? tags.split(',').map((tag) => tag.trim()) : [],
     imageUrl,
     sourceFileUrl,
-    artist: req.user._id,
+    artist_id: req.user._id,
   });
 
   const createdArtwork = await artwork.save();
@@ -90,7 +92,9 @@ export const downloadArtworkPdf = asyncHandler(async (req, res) => {
   }
 
   // Verify Premium Access
-  const isPremium = ['pro', 'studio'].includes(req.user.subscriptionPlan);
+  const membership = await Membership.findOne({ user_id: req.user._id, isActive: true });
+  const plan = membership ? membership.plan : 'basic';
+  const isPremium = ['pro', 'studio'].includes(plan);
   const isPrivileged = ['admin', 'artist'].includes(req.user.role);
   
   if (!isPremium && !isPrivileged) {
@@ -142,6 +146,47 @@ export const downloadArtworkPdf = asyncHandler(async (req, res) => {
   doc.end();
 
   // Update download stats
-  artwork.downloads += 1;
-  await artwork.save();
+  await Artwork.updateOne({ _id: artwork._id }, { $inc: { downloads: 1 } });
+});
+
+// @desc    Create new review
+// @route   POST /api/artworks/:id/reviews
+// @access  Private
+export const createArtworkReview = asyncHandler(async (req, res) => {
+  const { rating, comment } = req.body;
+  const artworkId = req.params.id;
+
+  const artwork = await Artwork.findById(artworkId);
+
+  if (artwork) {
+    const alreadyReviewed = await Review.findOne({
+      artwork_id: artworkId,
+      user_id: req.user._id,
+    });
+
+    if (alreadyReviewed) {
+      res.status(400);
+      throw new Error('Artwork already reviewed');
+    }
+
+    const review = await Review.create({
+      user_id: req.user._id,
+      artwork_id: artworkId,
+      rating: Number(rating),
+      comment,
+    });
+
+    res.status(201).json({ message: 'Review added', review });
+  } else {
+    res.status(404);
+    throw new Error('Artwork not found');
+  }
+});
+
+// @desc    Get artwork reviews
+// @route   GET /api/artworks/:id/reviews
+// @access  Public
+export const getArtworkReviews = asyncHandler(async (req, res) => {
+  const reviews = await Review.find({ artwork_id: req.params.id }).populate('user_id', 'name profileImage');
+  res.json(reviews);
 });

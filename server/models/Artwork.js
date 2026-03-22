@@ -6,7 +6,7 @@ const artworkSchema = mongoose.Schema(
       type: String,
       required: true,
     },
-    artist: {
+    artist_id: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
       ref: 'User',
@@ -38,9 +38,6 @@ const artworkSchema = mongoose.Schema(
       type: String,
     },
     fileType: {
-      type: String,
-    },
-    fileSize: {
       type: String,
     },
   }

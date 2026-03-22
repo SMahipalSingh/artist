@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import User from './models/User.js';
 import Artwork from './models/Artwork.js';
+import Membership from './models/Membership.js';
 
 dotenv.config();
 connectDB();
@@ -27,6 +28,11 @@ const seedData = async () => {
       role: 'artist',
       avatar: 'https://randomuser.me/api/portraits/men/44.jpg'
     });
+
+    await Membership.create([
+      { user_id: adminUser._id, plan: 'basic', isActive: true, startDate: new Date() },
+      { user_id: artistUser._id, plan: 'studio', isActive: true, startDate: new Date() }
+    ]);
 
     const artworks = [
       {

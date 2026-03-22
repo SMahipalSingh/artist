@@ -6,6 +6,9 @@ import { Heart, Download, Share2, ShieldCheck, Maximize2 } from 'lucide-react';
 const ArtworkDetails = () => {
   const { id } = useParams();
   const [artwork, setArtwork] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -13,6 +16,12 @@ const ArtworkDetails = () => {
       try {
         const { data } = await axios.get(`/api/artworks/${id}`);
         setArtwork(data);
+        try {
+          const { data: reviewsData } = await axios.get(`/api/artworks/${id}/reviews`);
+          setReviews(reviewsData || []);
+        } catch (e) {
+          console.error('Failed to load reviews');
+        }
       } catch (error) {
         console.error('Error fetching artwork details', error);
       } finally {
@@ -24,6 +33,34 @@ const ArtworkDetails = () => {
 
   if (loading) return <div style={{ padding: '6rem 2rem', textAlign: 'center', color: '#94a3b8' }}>Loading Masterpiece...</div>;
   if (!artwork) return <div style={{ padding: '6rem 2rem', textAlign: 'center', color: '#ef4444' }}>Artwork not found.</div>;
+
+  const submitReviewHandler = async (e) => {
+    e.preventDefault();
+    const user = JSON.parse(localStorage.getItem('userInfo'));
+    if (!user) {
+      alert('Please login to write a review.');
+      return;
+    }
+    if (rating === 0 || comment.trim() === '') {
+      alert('Please select a rating and write a comment');
+      return;
+    }
+    try {
+      await axios.post(
+        `/api/artworks/${id}/reviews`,
+        { rating, comment },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      alert('Review successfully submitted!');
+      setRating(0);
+      setComment('');
+      
+      const { data: updatedReviews } = await axios.get(`/api/artworks/${id}/reviews`);
+      setReviews(updatedReviews);
+    } catch (error) {
+      alert(error.response?.data?.message || 'Error submitting review');
+    }
+  };
 
   return (
     <div className="container" style={{ padding: '4rem 2rem' }}>
@@ -123,6 +160,52 @@ const ArtworkDetails = () => {
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem', marginTop: '2rem' }}>
              <h4 style={{ marginBottom: '1rem', color: '#cbd5e1', fontSize: '1.1rem' }}>About this piece</h4>
              <p style={{ lineHeight: '1.6', color: '#94a3b8' }}>{artwork.description || 'No description provided by the artist.'}</p>
+          </div>
+          
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem', marginTop: '2rem' }}>
+             <h4 style={{ marginBottom: '1rem', color: '#cbd5e1', fontSize: '1.1rem' }}>Reviews ({reviews.length})</h4>
+             
+             {reviews.length === 0 && <p style={{ color: '#94a3b8', fontStyle: 'italic', marginBottom: '2rem' }}>No reviews yet. Be the first to review!</p>}
+             
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+               {reviews.map((r, i) => (
+                 <div key={i} style={{ background: '#1e293b', padding: '1rem', borderRadius: '8px' }}>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}>
+                     <strong style={{ color: '#e2e8f0' }}>{r.user_id?.name || 'User'}</strong>
+                     <span style={{ color: '#fbbf24', fontSize: '1.1rem' }}>
+                       {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}
+                     </span>
+                   </div>
+                   <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.95rem', lineHeight: '1.5' }}>{r.comment}</p>
+                 </div>
+               ))}
+             </div>
+             
+             <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '8px' }}>
+                <h4 style={{ marginBottom: '1rem', color: '#cbd5e1', fontSize: '1rem' }}>Write a Review</h4>
+                <form onSubmit={submitReviewHandler} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                   <select 
+                     value={rating} 
+                     onChange={(e) => setRating(Number(e.target.value))}
+                     style={{ padding: '0.8rem', background: '#0f172a', border: '1px solid #334155', color: '#f8fafc', borderRadius: '4px' }}
+                   >
+                     <option value="">Select Rating</option>
+                     <option value="1">1 - Poor</option>
+                     <option value="2">2 - Fair</option>
+                     <option value="3">3 - Good</option>
+                     <option value="4">4 - Very Good</option>
+                     <option value="5">5 - Masterpiece</option>
+                   </select>
+                   <textarea 
+                     rows="3" 
+                     placeholder="Share your thoughts..."
+                     value={comment}
+                     onChange={(e) => setComment(e.target.value)}
+                     style={{ padding: '0.8rem', background: '#0f172a', border: '1px solid #334155', color: '#f8fafc', borderRadius: '4px', resize: 'vertical' }}
+                   />
+                   <button type="submit" className="btn btn-outline" style={{ alignSelf: 'flex-start' }}>Post Review</button>
+                </form>
+             </div>
           </div>
 
         </div>

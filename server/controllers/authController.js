@@ -1,5 +1,6 @@
 import asyncHandler from 'express-async-handler';
 import User from '../models/User.js';
+import Membership from '../models/Membership.js';
 import generateToken from '../utils/generateToken.js';
 
 // @desc    Auth user & get token
@@ -11,13 +12,14 @@ export const authUser = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email });
 
   if (user && (await user.matchPassword(password))) {
+    const membership = await Membership.findOne({ user_id: user._id, isActive: true });
     res.json({
       _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
-      subscriptionPlan: user.subscriptionPlan,
       profileImage: user.profileImage,
+      subscriptionPlan: membership ? membership.plan : 'basic',
       token: generateToken(user._id),
     });
   } else {
@@ -50,13 +52,21 @@ export const registerUser = asyncHandler(async (req, res) => {
   });
 
   if (user) {
+    // Create default basic membership
+    await Membership.create({
+      user_id: user._id,
+      plan: 'basic',
+      isActive: true,
+      startDate: Date.now(),
+    });
+
     res.status(201).json({
       _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
-      subscriptionPlan: user.subscriptionPlan,
       profileImage: user.profileImage,
+      subscriptionPlan: 'basic',
       token: generateToken(user._id),
     });
   } else {
@@ -72,13 +82,14 @@ export const getUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
 
   if (user) {
+    const membership = await Membership.findOne({ user_id: user._id, isActive: true });
     res.json({
       _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
-      subscriptionPlan: user.subscriptionPlan,
       profileImage: user.profileImage,
+      subscriptionPlan: membership ? membership.plan : 'basic',
     });
   } else {
     res.status(404);

@@ -6,7 +6,16 @@ import User from '../models/User.js';
 // @access  Private/Admin
 export const getUsers = asyncHandler(async (req, res) => {
   const users = await User.find({});
-  res.json(users);
+  const populatedUsers = await Promise.all(
+    users.map(async (u) => {
+      const membership = await Membership.findOne({ user_id: u._id, isActive: true });
+      return {
+        ...u.toObject(),
+        subscriptionPlan: membership ? membership.plan : 'basic',
+      };
+    })
+  );
+  res.json(populatedUsers);
 });
 
 // @desc    Delete user
@@ -31,22 +40,36 @@ export const deleteUser = asyncHandler(async (req, res) => {
 // @desc    Upgrade user subscription
 // @route   PUT /api/users/profile/upgrade
 // @access  Private
+import Membership from '../models/Membership.js';
+
 export const upgradeUserSubscription = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
 
   if (user) {
-    user.subscriptionPlan = req.body.plan || 'pro';
+    const plan = req.body.plan || 'pro';
     
-    // In a real app, you would verify the Razorpay signature here.
-    const updatedUser = await user.save();
+    let membership = await Membership.findOne({ user_id: user._id });
+    if (membership) {
+      membership.plan = plan;
+      membership.isActive = true;
+      membership.startDate = Date.now();
+      await membership.save();
+    } else {
+      membership = await Membership.create({
+        user_id: user._id,
+        plan,
+        startDate: Date.now(),
+        isActive: true
+      });
+    }
 
     res.json({
-      _id: updatedUser._id,
-      name: updatedUser.name,
-      email: updatedUser.email,
-      role: updatedUser.role,
-      subscriptionPlan: updatedUser.subscriptionPlan,
-      profileImage: updatedUser.profileImage,
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      profileImage: user.profileImage,
+      subscriptionPlan: membership.plan,
       token: req.headers.authorization.split(' ')[1], // echo token back
     });
   } else {

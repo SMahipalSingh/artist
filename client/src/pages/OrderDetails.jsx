@@ -123,17 +123,16 @@ const OrderDetails = () => {
                    <CheckCircle size={24} color={isDelivered ? "white" : "#94a3b8"} />
                 </div>
                 <span style={{ fontSize: '0.9rem', color: isDelivered ? '#f8fafc' : '#94a3b8', fontWeight: 'bold' }}>Delivered</span>
-                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{order.deliveredAt ? new Date(order.deliveredAt).toLocaleDateString() : 'Pending'}</span>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{isDelivered ? 'Done' : 'Pending'}</span>
               </div>
             </div>
 
             {/* Address Summary */}
             <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '8px' }}>
-              <h4 style={{ margin: '0 0 1rem 0', color: '#e2e8f0' }}>Delivery Address</h4>
-              <p style={{ margin: '0 0 0.5rem 0', color: '#cbd5e1' }}><strong>{order.user.name}</strong></p>
-              <p style={{ margin: '0 0 0.2rem 0', color: '#94a3b8' }}>{order.shippingAddress.address}</p>
-              <p style={{ margin: '0 0 0.2rem 0', color: '#94a3b8' }}>{order.shippingAddress.city}, {order.shippingAddress.postalCode}</p>
-              <p style={{ margin: 0, color: '#94a3b8' }}>{order.shippingAddress.country}</p>
+              <h4 style={{ margin: '0 0 1rem 0', color: '#e2e8f0' }}>Delivery Information</h4>
+              <p style={{ margin: '0 0 0.5rem 0', color: '#cbd5e1' }}><strong>{order.user_id?.name || 'Customer'}</strong></p>
+              <p style={{ margin: '0 0 0.2rem 0', color: '#94a3b8' }}>Delivery handled dynamically per area.</p>
+              <p style={{ margin: 0, color: '#94a3b8' }}>Contact Support for exact shipping location details.</p>
             </div>
           </div>
         </div>
