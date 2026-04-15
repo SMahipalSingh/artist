@@ -3,10 +3,10 @@ import path from 'path';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 
-const isProduction = process.env.NODE_ENV === 'production';
+const useCloudinary = !!process.env.CLOUDINARY_CLOUD_NAME;
 
-// ─── Cloudinary config (production) ─────────────────────────────────────────
-if (isProduction) {
+// ─── Cloudinary config ──────────────────────────────────────────────────────
+if (useCloudinary) {
   cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
@@ -47,9 +47,9 @@ function checkFileType(file, cb) {
 
 // ─── Multer instance ─────────────────────────────────────────────────────────
 const upload = multer({
-  storage: isProduction ? cloudinaryStorage : diskStorage,
+  storage: useCloudinary ? cloudinaryStorage : diskStorage,
   limits: { fileSize: 200 * 1024 * 1024 }, // 200 MB
-  fileFilter: isProduction
+  fileFilter: useCloudinary
     ? undefined // Cloudinary handles format validation
     : (req, file, cb) => checkFileType(file, cb),
 });

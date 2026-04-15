@@ -1,5 +1,9 @@
+import mongoose from 'mongoose';
 import asyncHandler from 'express-async-handler';
+
 import User from '../models/User.js';
+import Membership from '../models/Membership.js';
+
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -8,7 +12,8 @@ export const getUsers = asyncHandler(async (req, res) => {
   const users = await User.find({});
   const populatedUsers = await Promise.all(
     users.map(async (u) => {
-      const membership = await Membership.findOne({ user_id: u._id, isActive: true });
+      const MembershipModel = mongoose.model('Membership');
+      const membership = await MembershipModel.findOne({ user_id: u._id, isActive: true });
       return {
         ...u.toObject(),
         subscriptionPlan: membership ? membership.plan : 'basic',
@@ -40,7 +45,6 @@ export const deleteUser = asyncHandler(async (req, res) => {
 // @desc    Upgrade user subscription
 // @route   PUT /api/users/profile/upgrade
 // @access  Private
-import Membership from '../models/Membership.js';
 
 export const upgradeUserSubscription = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
@@ -48,14 +52,15 @@ export const upgradeUserSubscription = asyncHandler(async (req, res) => {
   if (user) {
     const plan = req.body.plan || 'pro';
     
-    let membership = await Membership.findOne({ user_id: user._id });
+    const MembershipModel = mongoose.model('Membership');
+    let membership = await MembershipModel.findOne({ user_id: user._id });
     if (membership) {
       membership.plan = plan;
       membership.isActive = true;
       membership.startDate = Date.now();
       await membership.save();
     } else {
-      membership = await Membership.create({
+      membership = await MembershipModel.create({
         user_id: user._id,
         plan,
         startDate: Date.now(),

@@ -1,5 +1,27 @@
+# Dependencies
 node_modules/
+client/node_modules/
+server/node_modules/
+
+# Environment Variables (NEVER commit these)
 .env
-server/uploads/
-.DS_Store
+server/.env
+client/.env
+
+# Production builds
 client/dist/
+
+# Local uploads (images stored on Cloudinary in production)
+server/uploads/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/
