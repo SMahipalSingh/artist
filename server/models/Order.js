@@ -44,6 +44,20 @@ const orderSchema = mongoose.Schema(
       required: true,
       default: 0.0,
     },
+    platformFee: {
+      type: Number,
+      default: 0,
+    },
+    artistPayout: {
+      type: Number,
+      default: 0,
+    },
+    shippingAddress: {
+      address: { type: String },
+      city: { type: String },
+      postalCode: { type: String },
+      country: { type: String },
+    },
     isPaid: {
       type: Boolean,
       required: true,

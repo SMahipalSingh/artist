@@ -83,7 +83,7 @@ const ArtworkDetails = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem', lineHeight: '1.2' }}>{artwork.title}</h1>
-              <p style={{ fontSize: '1.2rem', color: '#94a3b8', marginBottom: '1.5rem' }}>{artwork.artist?.name || 'Unknown Artist'}</p>
+              <p style={{ fontSize: '1.2rem', color: '#94a3b8', marginBottom: '1.5rem' }}>{artwork.artist_id?.name || 'Unknown Artist'}</p>
             </div>
             <button 
               className="btn btn-outline" 

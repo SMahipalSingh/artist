@@ -21,7 +21,7 @@ const ArtistDashboard = () => {
            axios.get('/api/orders/my-sales', config)
         ]);
         
-        const myArt = artRes.data.filter(art => art.artist && art.artist._id === user._id);
+        const myArt = artRes.data.filter(art => art.artist_id && art.artist_id._id === user._id);
         setArtworks(myArt);
         setOrders(salesRes.data);
 

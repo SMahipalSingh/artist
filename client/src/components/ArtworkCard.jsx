@@ -20,7 +20,7 @@ const ArtworkCard = ({ artwork }) => {
         <h3 style={{ fontSize: '1.2rem', margin: '0 0 0.2rem 0', color: '#f8fafc', fontWeight: 'bold' }}>
           <Link to={`/artwork/${artwork._id}`} style={{ color: 'inherit' }}>{artwork.title}</Link>
         </h3>
-        <p className="text-muted" style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem' }}>{artwork.artist?.name || 'Unknown Artist'}</p>
+        <p className="text-muted" style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem' }}>{artwork.artist_id?.name || 'Unknown Artist'}</p>
         <span style={{ display: 'block', fontSize: '1.1rem', fontWeight: 'bold', color: '#cbd5e1' }}>
           ₹{artwork.price}
         </span>

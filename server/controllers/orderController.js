@@ -49,6 +49,9 @@ export const addOrderItems = asyncHandler(async (req, res) => {
       taxPrice,
       shippingPrice,
       totalPrice,
+      platformFee,
+      artistPayout,
+      shippingAddress: shippingAddress || {},
       isPaid: true,
       paidAt: Date.now(),
     });
@@ -105,7 +108,12 @@ export const getOrderById = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 export const getOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({}).populate('user_id', 'id name');
-  res.json(orders);
+  // Attach orderItems so admin dashboard can access platformFee etc.
+  const populatedOrders = await Promise.all(orders.map(async (order) => {
+    const orderItems = await OrderItem.find({ order_id: order._id });
+    return { ...order.toObject(), orderItems };
+  }));
+  res.json(populatedOrders);
 });
 
 // @desc    Get all orders sold by the logged in artist
@@ -113,9 +121,14 @@ export const getOrders = asyncHandler(async (req, res) => {
 // @access  Private/Artist
 export const getMyArtistSales = asyncHandler(async (req, res) => {
   const items = await OrderItem.find({ artist_id: req.user._id });
-  const orderIds = [...new Set(items.map(i => i.order_id))];
+  const orderIds = [...new Set(items.map(i => i.order_id.toString()))];
   const orders = await Order.find({ _id: { $in: orderIds } });
-  res.json(orders);
+  // Attach orderItems to each order so the frontend can display item names
+  const populatedOrders = await Promise.all(orders.map(async (order) => {
+    const orderItems = await OrderItem.find({ order_id: order._id });
+    return { ...order.toObject(), orderItems };
+  }));
+  res.json(populatedOrders);
 });
 
 // @desc    Update order status
