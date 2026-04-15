@@ -5,6 +5,8 @@ import Review from '../models/Review.js';
 import fs from 'fs';
 import path from 'path';
 import PDFDocument from 'pdfkit';
+import https from 'https';
+import http from 'http';
 
 // @desc    Fetch all artworks
 // @route   GET /api/artworks
@@ -54,8 +56,11 @@ export const uploadArtwork = asyncHandler(async (req, res) => {
   let sourceFileUrl = '';
 
   if (req.file) {
-    // The single high-res image serves as both preview and source
-    const filePath = `/uploads/artworks/${req.file.filename}`;
+    // Cloudinary (production): req.file.path is the full CDN URL
+    // Disk storage (dev): build path from filename
+    const filePath = req.file.path
+      ? req.file.path  // Cloudinary URL
+      : `/uploads/artworks/${req.file.filename}`; // local path
     imageUrl = filePath;
     sourceFileUrl = filePath;
   }
@@ -102,13 +107,11 @@ export const downloadArtworkPdf = asyncHandler(async (req, res) => {
     throw new Error('A CanvasFlow Pro or Studio subscription is required to download Master files.');
   }
 
-  const __dirname = path.resolve();
-  // We handle the path verification inside the try-catch block during PDF generation
   const doc = new PDFDocument({ margin: 50, size: 'A4' });
-  
+
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${artwork.title.replace(/\s+/g, '_')}_CanvasFlow.pdf"`);
-  
+
   doc.pipe(res);
 
   // Add Branding and License Text
@@ -120,22 +123,31 @@ export const downloadArtworkPdf = asyncHandler(async (req, res) => {
   doc.fontSize(10).fillColor('#999999').text(`Transaction Date: ${new Date().toLocaleString()}`, { align: 'center' });
   doc.moveDown(2);
 
-  // Attempt to draw image securely
+  // Attempt to draw image — handles both Cloudinary URLs and local paths
   try {
-    // pdfkit needs the absolute path without leading slashes if it's constructed manually, 
-    // or we just join it carefully. `__dirname` resolves up to `server`, but `filePath` might have `/uploads`.
-    // Let's ensure the path is clean.
-    const cleanPath = path.join(__dirname, artwork.imageUrl.replace(/^\//, ''));
-    
-    if (!fs.existsSync(cleanPath)) {
-        throw new Error(`File not found at ${cleanPath}`);
-    }
+    const isRemoteUrl = artwork.imageUrl && artwork.imageUrl.startsWith('http');
 
-    doc.image(cleanPath, {
-      fit: [500, 500],
-      align: 'center',
-      valign: 'center'
-    });
+    if (isRemoteUrl) {
+      // Fetch image from Cloudinary as a Buffer
+      const imageBuffer = await new Promise((resolve, reject) => {
+        const protocol = artwork.imageUrl.startsWith('https') ? https : http;
+        protocol.get(artwork.imageUrl, (response) => {
+          const chunks = [];
+          response.on('data', (chunk) => chunks.push(chunk));
+          response.on('end', () => resolve(Buffer.concat(chunks)));
+          response.on('error', reject);
+        }).on('error', reject);
+      });
+      doc.image(imageBuffer, { fit: [500, 500], align: 'center', valign: 'center' });
+    } else {
+      // Local disk path (dev)
+      const __dirname = path.resolve();
+      const cleanPath = path.join(__dirname, artwork.imageUrl.replace(/^\//, ''));
+      if (!fs.existsSync(cleanPath)) {
+        throw new Error(`File not found at ${cleanPath}`);
+      }
+      doc.image(cleanPath, { fit: [500, 500], align: 'center', valign: 'center' });
+    }
   } catch (err) {
     console.error('Error attaching image to PDF:', err);
     doc.fontSize(16).fillColor('red').text('- ERROR LOADING SOURCE IMAGE -', { align: 'center' });
