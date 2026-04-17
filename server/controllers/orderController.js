@@ -140,7 +140,11 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
   if (order) {
     order.orderStatus = req.body.status || order.orderStatus;
     const updatedOrder = await order.save();
-    res.json(updatedOrder);
+    
+    // Attach orderItems to prevent frontend crashes on state update
+    const orderItems = await OrderItem.find({ order_id: updatedOrder._id });
+    
+    res.json({ ...updatedOrder.toObject(), orderItems });
   } else {
     res.status(404);
     throw new Error('Order not found');
