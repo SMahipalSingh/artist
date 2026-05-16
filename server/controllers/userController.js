@@ -59,7 +59,7 @@ export const upgradeUserSubscription = asyncHandler(async (req, res) => {
     if (razorpayPaymentId && razorpayOrderId && razorpaySignature) {
       const body = razorpayOrderId + "|" + razorpayPaymentId;
       const expectedSignature = crypto
-        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'SJpGiVpxTI2jgmlUJhCEajGm')
         .update(body.toString())
         .digest('hex');
 

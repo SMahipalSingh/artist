@@ -9,8 +9,8 @@ import crypto from 'crypto';
 // Setup Razorpay instance
 const getRazorpayInstance = () => {
   return new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
+    key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_SpvdHi0VWMs3q3',
+    key_secret: process.env.RAZORPAY_KEY_SECRET || 'SJpGiVpxTI2jgmlUJhCEajGm',
   });
 };
 // @desc    Create new physical order
@@ -34,7 +34,7 @@ export const addOrderItems = asyncHandler(async (req, res) => {
   if (paymentMethod === 'Razorpay') {
     const body = razorpayOrderId + "|" + razorpayPaymentId;
     const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'SJpGiVpxTI2jgmlUJhCEajGm')
       .update(body.toString())
       .digest('hex');
 
