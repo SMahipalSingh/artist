@@ -14,7 +14,6 @@ import UploadArtwork from './pages/artist/UploadArtwork';
 import CollectorDashboard from './pages/CollectorDashboard';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import Checkout from './pages/Checkout';
-import MockRazorpay from './pages/MockRazorpay';
 import OrderDetails from './pages/OrderDetails';
 
 function App() {
@@ -37,7 +36,6 @@ function App() {
               <Route element={<ProtectedRoute allowedRoles={['collector', 'artist', 'admin']} />}>
                 <Route path="/collector-dashboard" element={<CollectorDashboard />} />
                 <Route path="/checkout/:id" element={<Checkout />} />
-                <Route path="/payment-gateway" element={<MockRazorpay />} />
                 <Route path="/order/:id" element={<OrderDetails />} />
               </Route>
 

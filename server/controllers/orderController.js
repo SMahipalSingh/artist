@@ -3,7 +3,16 @@ import Order from '../models/Order.js';
 import Artwork from '../models/Artwork.js';
 import OrderItem from '../models/OrderItem.js';
 import Membership from '../models/Membership.js';
+import Razorpay from 'razorpay';
+import crypto from 'crypto';
 
+// Setup Razorpay instance
+const getRazorpayInstance = () => {
+  return new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+};
 // @desc    Create new physical order
 // @route   POST /api/orders
 // @access  Private
@@ -16,7 +25,24 @@ export const addOrderItems = asyncHandler(async (req, res) => {
     taxPrice,
     shippingPrice,
     totalPrice,
+    razorpayPaymentId,
+    razorpayOrderId,
+    razorpaySignature,
   } = req.body;
+
+  // Verify Razorpay signature if payment method is Razorpay
+  if (paymentMethod === 'Razorpay') {
+    const body = razorpayOrderId + "|" + razorpayPaymentId;
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(body.toString())
+      .digest('hex');
+
+    if (expectedSignature !== razorpaySignature) {
+      res.status(400);
+      throw new Error('Invalid payment signature');
+    }
+  }
 
   if (orderItems && orderItems.length === 0) {
     res.status(400);
@@ -148,5 +174,33 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
   } else {
     res.status(404);
     throw new Error('Order not found');
+  }
+});
+
+// @desc    Create Razorpay Order
+// @route   POST /api/orders/razorpay/create
+// @access  Private
+export const createRazorpayOrder = asyncHandler(async (req, res) => {
+  const { amount } = req.body; // Amount should be in rupees
+
+  if (!amount || amount <= 0) {
+    res.status(400);
+    throw new Error('Invalid amount');
+  }
+
+  const instance = getRazorpayInstance();
+
+  const options = {
+    amount: Math.round(amount * 100), // Convert to paise
+    currency: 'INR',
+    receipt: `receipt_order_${Date.now()}`,
+  };
+
+  try {
+    const order = await instance.orders.create(options);
+    res.json(order);
+  } catch (error) {
+    res.status(500);
+    throw new Error('Failed to create Razorpay order');
   }
 });

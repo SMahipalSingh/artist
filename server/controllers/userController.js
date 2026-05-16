@@ -46,23 +46,43 @@ export const deleteUser = asyncHandler(async (req, res) => {
 // @route   PUT /api/users/profile/upgrade
 // @access  Private
 
+import crypto from 'crypto';
+
 export const upgradeUserSubscription = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
 
   if (user) {
-    const plan = req.body.plan || 'pro';
+    const { plan, razorpayPaymentId, razorpayOrderId, razorpaySignature } = req.body;
+    const upgradePlan = plan || 'pro';
     
+    // Verify Razorpay signature
+    if (razorpayPaymentId && razorpayOrderId && razorpaySignature) {
+      const body = razorpayOrderId + "|" + razorpayPaymentId;
+      const expectedSignature = crypto
+        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+        .update(body.toString())
+        .digest('hex');
+
+      if (expectedSignature !== razorpaySignature) {
+        res.status(400);
+        throw new Error('Invalid payment signature');
+      }
+    } else {
+      res.status(400);
+      throw new Error('Payment details missing');
+    }
+
     const MembershipModel = mongoose.model('Membership');
     let membership = await MembershipModel.findOne({ user_id: user._id });
     if (membership) {
-      membership.plan = plan;
+      membership.plan = upgradePlan;
       membership.isActive = true;
       membership.startDate = Date.now();
       await membership.save();
     } else {
       membership = await MembershipModel.create({
         user_id: user._id,
-        plan,
+        plan: upgradePlan,
         startDate: Date.now(),
         isActive: true
       });

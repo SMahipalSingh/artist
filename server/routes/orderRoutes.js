@@ -6,11 +6,13 @@ import {
   getOrderById,
   getOrders,
   getMyArtistSales,
-  updateOrderStatus
+  updateOrderStatus,
+  createRazorpayOrder
 } from '../controllers/orderController.js';
 import { protect, admin, artist } from '../middleware/authMiddleware.js';
 
 router.route('/').post(protect, addOrderItems).get(protect, admin, getOrders);
+router.route('/razorpay/create').post(protect, createRazorpayOrder);
 router.route('/myorders').get(protect, getMyOrders);
 router.route('/my-sales').get(protect, artist, getMyArtistSales);
 router.route('/:id').get(protect, getOrderById);

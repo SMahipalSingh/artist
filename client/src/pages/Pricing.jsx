@@ -9,21 +9,74 @@ const Pricing = () => {
   const navigate = useNavigate();
   const [processingPlan, setProcessingPlan] = useState(null);
   
-  const handleUpgrade = (planTier, planPrice) => {
+  const handleUpgrade = async (planTier, planPrice) => {
     if (!user) {
       navigate('/login');
       return;
     }
 
-    const orderData = {
-      isSubscription: true,
-      plan: planTier,
-      totalPrice: planPrice,
-      token: user.token
-    };
+    try {
+      setProcessingPlan(planTier);
+      
+      // 1. Create Razorpay order on Backend
+      const { data: razorpayOrder } = await axios.post(
+        '/api/orders/razorpay/create',
+        { amount: planPrice },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
 
-    // Route to the dedicated Razorpay Mock Page
-    navigate('/payment-gateway', { state: orderData });
+      // 2. Open Razorpay Checkout
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SpvdHi0VWMs3q3',
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        name: 'CanvasFlow Subscriptions',
+        description: `Upgrade to ${planTier.charAt(0).toUpperCase() + planTier.slice(1)} Plan`,
+        order_id: razorpayOrder.id,
+        handler: async function (response) {
+          try {
+            // 3. Verify on backend and upgrade
+            const payload = {
+              plan: planTier,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpaySignature: response.razorpay_signature,
+            };
+
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            const { data } = await axios.put('/api/users/profile/upgrade', payload, config);
+            
+            updateUserData(data); // Immediately unlock Navbar/Dashboard UI
+            navigate('/collector-dashboard', { replace: true });
+            
+          } catch (err) {
+            alert('Subscription upgrade failed. Please contact support.');
+            console.error('Upgrade Error:', err);
+          } finally {
+            setProcessingPlan(null);
+          }
+        },
+        prefill: {
+          name: user.name,
+          email: user.email,
+        },
+        theme: {
+          color: '#7c3aed'
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response) {
+        alert('Payment failed: ' + response.error.description);
+        setProcessingPlan(null);
+      });
+      rzp.open();
+
+    } catch (error) {
+      console.error('Failed to initiate Razorpay checkout', error);
+      alert('Could not initiate payment.');
+      setProcessingPlan(null);
+    }
   };
 
   return (

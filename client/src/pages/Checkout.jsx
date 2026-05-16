@@ -34,7 +34,7 @@ const Checkout = () => {
     fetchArtwork();
   }, [id]);
 
-  const handlePayment = (e) => {
+  const handlePayment = async (e) => {
     e.preventDefault();
 
     const orderData = {
@@ -47,10 +47,9 @@ const Checkout = () => {
           artwork: artwork._id,
         }
       ],
-      // Fulfilling backend schema with defaults since we simplified UI
       shippingAddress: { 
         address: address, 
-        city: phone, // Repurposing schema city for phone string to keep Mongoose schema compatible without a backend rewrite
+        city: phone,
         postalCode: postalCode, 
         country: 'India' 
       },
@@ -61,8 +60,64 @@ const Checkout = () => {
       token: user.token
     };
 
-    // Redirect to explicitly mocked Razorpay page instead of processing here
-    navigate('/payment-gateway', { state: orderData });
+    try {
+      // 1. Create Order on Backend
+      const { data: razorpayOrder } = await axios.post(
+        '/api/orders/razorpay/create',
+        { amount: orderData.totalPrice },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+
+      // 2. Open Razorpay Checkout Modal
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SpvdHi0VWMs3q3', // Fallback for simplicity
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        name: 'CanvasFlow',
+        description: `Purchase: ${artwork.title}`,
+        order_id: razorpayOrder.id,
+        handler: async function (response) {
+          try {
+            // 3. Verify Signature and Save Physical Order on Backend
+            const payload = {
+              ...orderData,
+              paymentMethod: 'Razorpay',
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpaySignature: response.razorpay_signature,
+            };
+
+            const { data: savedOrder } = await axios.post('/api/orders', payload, {
+              headers: { Authorization: `Bearer ${user.token}` }
+            });
+
+            // Redirect to success Tracking
+            navigate(`/order/${savedOrder._id}`, { replace: true, state: { newlyPlaced: true } });
+          } catch (err) {
+            alert('Payment verification failed. Please contact support.');
+            console.error('Payment Verification Error:', err);
+          }
+        },
+        prefill: {
+          name: user.name,
+          email: user.email,
+          contact: phone
+        },
+        theme: {
+          color: '#7c3aed'
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response) {
+        alert('Payment failed. Reason: ' + response.error.description);
+      });
+      rzp.open();
+
+    } catch (error) {
+      console.error('Failed to initiate Razorpay checkout', error);
+      alert('Could not initiate payment. Please try again later.');
+    }
   };
 
   if (loading) return <div style={{ padding: '6rem 2rem', textAlign: 'center', color: '#94a3b8' }}>Loading secure checkout...</div>;
